@@ -151,10 +151,9 @@ class ShuffleUnit:
                 Conv2D(in_channels, out_channels, 1, 1, 0, groups=1),
                 BatchNorm2D(out_channels)
             )
+            # 确保 shortcut 的 in_channels 是 out_channels
             self.shortcut = Sequential(
-                Conv2D(in_channels, in_channels, 3, stride, 1, groups=in_channels),
-                BatchNorm2D(in_channels),
-                Conv2D(in_channels, out_channels, 1, 1, 0, groups=1),
+                Conv2D(in_channels, out_channels, 1, stride, 0),  # 修改输入通道为 out_channels
                 BatchNorm2D(out_channels)
             )
         else:
@@ -167,7 +166,11 @@ class ShuffleUnit:
                 Conv2D(mid_channels, out_channels, 1, 1, 0, groups=1),
                 BatchNorm2D(out_channels)
             )
-            self.shortcut = Sequential()
+            # 当 stride 不等于 2 时，需要添加一个 1x1 卷积来匹配通道数
+            self.shortcut = Sequential(
+                Conv2D(in_channels, out_channels, 1, 1, 0),  # 添加 1x1 卷积
+                BatchNorm2D(out_channels)
+            )
 
         self.shuffle = ChannelShuffle(groups)
         self.relu = ReLU()
@@ -177,6 +180,7 @@ class ShuffleUnit:
         shortcut = self.shortcut.forward(x)
         output = self.relu.forward(residual + shortcut)
         return self.shuffle.forward(output)
+
 
 class ShuffleNet:
     def __init__(self, num_classes=1000, groups=3):
